@@ -1,0 +1,208 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+}
+
+enum AddonType {
+  CUSTOM_DOMAIN
+  WHITELABEL
+  API_ACCESS
+  AUTO_EXPIRING_LINKS
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id                 String         @id @default(cuid())
+  name              String?
+  email             String?        @unique
+  emailVerified     DateTime?
+  image             String?
+  role              UserRole       @default(USER)
+  accounts          Account[]
+  sessions          Session[]
+  referralLinks     ReferralLink[]
+  subscription      Subscription?
+  userAddons        UserAddon[]
+  profile           UserProfile?
+  sessionEvents     SessionEvent[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Subscription {
+  id                String           @id @default(cuid())
+  userId           String           @unique
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan             SubscriptionPlan @default(FREE)
+  stripeCustomerId String?          @unique
+  stripePriceId    String?
+  stripeCurrentPeriodEnd DateTime?
+  stripeSubscriptionId String?       @unique
+  status           String?
+  cancelAtPeriodEnd Boolean?         @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model UserAddon {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  addonType AddonType
+  status    String     @default("active") // active, canceled, expired
+  stripeSubscriptionId String?  @unique
+  stripePriceId       String?
+  currentPeriodEnd    DateTime?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([userId, addonType])
+}
+
+model ReferralLink {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  url          String
+  slug         String       @unique
+  isActive     Boolean      @default(true)
+  isPublic     Boolean      @default(true)
+  expiresAt    DateTime?
+  clicks       Int          @default(0)
+  conversions  Int          @default(0)
+  clickData    Json?        // Store click analytics as JSON
+  clickEvents  ClickEvent[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([slug])
+  @@index([userId])
+}
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio         String?
+  company     String?
+  jobTitle    String?
+  website     String?
+  twitter     String?
+  linkedin    String?
+  github      String?
+  avatarUrl   String?
+  headerImage String?
+  theme       Json?    // Store theme preferences as JSON
+  layout      Json?    // Store layout preferences as JSON
+  customCss   String?
+  customJs    String?
+  customDomain String? @unique
+  isCustomDomainActive Boolean @default(false)
+  seoTitle    String?
+  seoDescription String?
+  seoImage    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ClickEvent {
+  id            String   @id @default(cuid())
+  referralLinkId String
+  referralLink   ReferralLink @relation(fields: [referralLinkId], references: [id], onDelete: Cascade)
+  @@index([referralLinkId])
+  @@index([createdAt])
+  ipAddress     String?
+  userAgent     String?
+  referrer      String?
+  country       String?
+  region        String?
+  city          String?
+  deviceType    String? // mobile, tablet, desktop
+  browser       String?
+  os            String?
+  isConversion  Boolean  @default(false)
+  conversionValue Float?  // Optional: value of the conversion
+  createdAt     DateTime @default(now())
+
+
+  @@index([referralLinkId])
+  @@index([createdAt])
+}
+
+// For tracking user sessions across page views
+model SessionEvent {
+  id        String   @id @default(cuid())
+  sessionId String   // Client-side generated session ID
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@index([sessionId])
+  @@index([userId])
+  @@index([createdAt])
+  ipAddress String?
+  userAgent String?
+  referrer  String?
+  country   String?
+  region    String?
+  city      String?
+  device    String?
+  browser   String?
+  os        String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime @default(dbgenerated("(now() + '30 days'::interval)"))
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([createdAt])
+}
