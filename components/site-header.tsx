@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -37,7 +39,7 @@ export function SiteHeader() {
   const pathname = usePathname();
 
   // Don't show header on auth pages
-  if (['/login', '/register'].includes(pathname)) {
+  if (pathname && ['/login', '/register'].includes(pathname)) {
     return null;
   }
 
