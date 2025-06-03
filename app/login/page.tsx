@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import { signIn, useSession } from "next-auth/react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,6 +13,11 @@ import { Eye, EyeOff, ArrowLeft, Github, Twitter } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { data: session, status } = useSession()
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard"
+  const error = searchParams?.get("error")
+  
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -22,17 +28,24 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({
     email: "",
     password: "",
-    general: "",
+    general: error === "CredentialsSignin" ? "Invalid email or password" : "",
   })
+  
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.push(callbackUrl)
+    }
+  }, [status, router, callbackUrl])
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
     // Clear error when user starts typing
     setErrors((prev) => ({ ...prev, [name]: "" }))
   }
 
-  const handleCheckboxChange = (checked) => {
+  const handleCheckboxChange = (checked: boolean) => {
     setFormData((prev) => ({ ...prev, rememberMe: checked }))
   }
 
@@ -56,7 +69,7 @@ export default function LoginPage() {
     return valid
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!validateForm()) {
@@ -66,14 +79,23 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: formData.email,
+        password: formData.password,
+        callbackUrl
+      })
 
-      // Redirect to dashboard after successful login
-      router.push("/dashboard")
+      if (!result?.error) {
+        // Successful login, redirect
+        router.push(callbackUrl)
+      } else {
+        // Authentication failed
+        setErrors((prev) => ({ ...prev, general: "Invalid email or password" }))
+      }
     } catch (error) {
       console.error("Login error:", error)
-      setErrors((prev) => ({ ...prev, general: "Invalid email or password" }))
+      setErrors((prev) => ({ ...prev, general: "An error occurred during login" }))
     } finally {
       setIsLoading(false)
     }
@@ -206,6 +228,11 @@ export default function LoginPage() {
                   <Button
                     variant="outline"
                     className="border-blue-800/50 text-white hover:bg-blue-900/30 flex items-center justify-center"
+                    onClick={() => {
+                      setIsLoading(true)
+                      signIn("github", { callbackUrl })
+                    }}
+                    disabled={isLoading}
                   >
                     <Github className="mr-2 h-4 w-4" />
                     GitHub
@@ -213,6 +240,11 @@ export default function LoginPage() {
                   <Button
                     variant="outline"
                     className="border-blue-800/50 text-white hover:bg-blue-900/30 flex items-center justify-center"
+                    onClick={() => {
+                      setIsLoading(true)
+                      signIn("twitter", { callbackUrl })
+                    }}
+                    disabled={isLoading}
                   >
                     <Twitter className="mr-2 h-4 w-4" />
                     Twitter

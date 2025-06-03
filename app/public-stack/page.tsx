@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import ReferralCard from "@/components/referral-card"
 import RobotAvatar from "@/components/robot-avatar"
@@ -8,7 +8,7 @@ import Link from "next/link"
 import { Share2, Download, Settings, Palette, Eye, Users, TrendingUp, ExternalLink } from "lucide-react"
 
 export default function PublicStackPage() {
-  const [selectedTheme, setSelectedTheme] = useState("default")
+  const [selectedTheme, setSelectedTheme] = useState<'default' | 'sunset' | 'forest' | 'midnight'>('default')
 
   // Theme configurations
   const themes = {
@@ -160,7 +160,7 @@ export default function PublicStackPage() {
             {Object.entries(themes).map(([key, theme]) => (
               <button
                 key={key}
-                onClick={() => setSelectedTheme(key)}
+                onClick={() => setSelectedTheme(key as 'default' | 'sunset' | 'forest' | 'midnight')}
                 className={`w-8 h-8 rounded-full border-2 transition-all ${
                   selectedTheme === key ? "border-white scale-110" : "border-transparent"
                 }`}

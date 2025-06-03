@@ -40,7 +40,8 @@ model Account {
   scope             String?
   id_token          String? @db.Text
   session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -54,21 +55,34 @@ model Session {
 }
 
 model User {
-  id                 String         @id @default(cuid())
+  id                String               @id @default(cuid())
   name              String?
-  email             String?        @unique
+  email             String               @unique
   emailVerified     DateTime?
+  hashedPassword    String?
   image             String?
-  role              UserRole       @default(USER)
+  avatarUrl         String?
   accounts          Account[]
   sessions          Session[]
   referralLinks     ReferralLink[]
   subscription      Subscription?
-  userAddons        UserAddon[]
-  profile           UserProfile?
-  sessionEvents     SessionEvent[]
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  userPreference    UserPreference?
+  addons            UserAddon[]
+  notifications     Notification[]
+  customDomains     CustomDomain[]
+  bannerUrl         String?
+  logoUrl           String?
+  bio               String?
+  socialLinks       Json?               @default("{}") // store as json
+  username          String?             @unique
+  phoneNumber       String?
+  address           String?
+  company           String?
+  title             String?
+  primaryColor      String?             @default("#0070f3") // default primary color
+  publicProfile     Boolean             @default(true) // is public profile enabled
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 }
 
 model VerificationToken {
@@ -79,109 +93,241 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model Subscription {
-  id                String           @id @default(cuid())
-  userId           String           @unique
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan             SubscriptionPlan @default(FREE)
-  stripeCustomerId String?          @unique
-  stripePriceId    String?
-  stripeCurrentPeriodEnd DateTime?
-  stripeSubscriptionId String?       @unique
-  status           String?
-  cancelAtPeriodEnd Boolean?         @default(false)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-}
-
-model UserAddon {
-  id        String     @id @default(cuid())
-  userId    String
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  addonType AddonType
-  status    String     @default("active") // active, canceled, expired
-  stripeSubscriptionId String?  @unique
-  stripePriceId       String?
-  currentPeriodEnd    DateTime?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-
-  @@unique([userId, addonType])
+model UserPreference {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme        String    @default("system")
+  emailUpdates Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model ReferralLink {
-  id           String       @id @default(cuid())
-  userId       String
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title        String
-  description  String?
-  url          String
-  slug         String       @unique
-  isActive     Boolean      @default(true)
-  isPublic     Boolean      @default(true)
-  expiresAt    DateTime?
-  clicks       Int          @default(0)
-  conversions  Int          @default(0)
-  clickData    Json?        // Store click analytics as JSON
-  clickEvents  ClickEvent[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-
-  @@index([slug])
-  @@index([userId])
-}
-
-model UserProfile {
   id          String   @id @default(cuid())
-  userId      String   @unique
+  userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio         String?
-  company     String?
-  jobTitle    String?
-  website     String?
-  twitter     String?
-  linkedin    String?
-  github      String?
-  avatarUrl   String?
-  headerImage String?
-  theme       Json?    // Store theme preferences as JSON
-  layout      Json?    // Store layout preferences as JSON
-  customCss   String?
-  customJs    String?
-  customDomain String? @unique
-  isCustomDomainActive Boolean @default(false)
-  seoTitle    String?
-  seoDescription String?
-  seoImage    String?
+  name        String
+  url         String
+  shortCode   String   @unique
+  description String?  @db.Text
+  customLogo  String?
+  customColor String?
+  customSlug  String?  @unique
+  clicks      Click[]
+  conversions Int      @default(0)
+  active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
-model ClickEvent {
-  id            String   @id @default(cuid())
+model Click {
+  id             String       @id @default(cuid())
   referralLinkId String
   referralLink   ReferralLink @relation(fields: [referralLinkId], references: [id], onDelete: Cascade)
-  @@index([referralLinkId])
-  @@index([createdAt])
-  ipAddress     String?
-  userAgent     String?
-  referrer      String?
-  country       String?
-  region        String?
-  city          String?
-  deviceType    String? // mobile, tablet, desktop
-  browser       String?
-  os            String?
-  isConversion  Boolean  @default(false)
-  conversionValue Float?  // Optional: value of the conversion
-  createdAt     DateTime @default(now())
-
-
-  @@index([referralLinkId])
-  @@index([createdAt])
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ip             String?
+  userAgent      String?
+  country        String?
+  city           String?
+  browser        String?
+  os             String?
+  device         String?
+  referer        String?
+  converted      Boolean      @default(false)
+  conversionData Json?
+  createdAt      DateTime     @default(now())
 }
 
-// For tracking user sessions across page views
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                 String    @default("FREE")
+  status               String    @default("ACTIVE") // ACTIVE, CANCELED, PAST_DUE, UNPAID, TRIALING
+  startDate            DateTime  @default(now())
+  endDate              DateTime?
+  trialEndDate         DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  stripePriceId        String?
+  paypalSubscriptionId String?
+  features             Json?     @default("{}")
+  maxLinks             Int       @default(5)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+model UserProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio            String?  @db.Text
+  website        String?
+  twitterHandle  String?
+  githubHandle   String?
+  linkedinHandle String?
+  telegramHandle String?
+  company        String?
+  location       String?
+  timezone       String?  @default("UTC")
+  avatarUrl      String?
+  bannerUrl      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model SubscriptionPlan {
+  id            String  @id @default(cuid())
+  name          String  @unique
+  description   String
+  price         Float
+  interval      String  @default("month") // month, year
+  currency      String  @default("USD")
+  stripePriceId String?
+  paypalPlanId  String?
+  features      Json?   @default("{}")
+  isPublic      Boolean @default(true)
+  active        Boolean @default(true)
+  maxLinks      Int     @default(5)
+  priority      Int     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Invoice {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount           Float
+  currency         String    @default("USD")
+  status           String    @default("PENDING") // PENDING, PAID, FAILED, REFUNDED
+  stripeInvoiceId  String?
+  stripePriceId    String?
+  stripeCustomerId String?
+  paypalInvoiceId  String?
+  paymentMethod    String?
+  paidAt           DateTime?
+  invoiceDate      DateTime  @default(now())
+  dueDate          DateTime
+  items            Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model PaymentMethod {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                 String   // CARD, PAYPAL, CRYPTO
+  stripePaymentMethodId String?
+  paypalPaymentMethodId String?
+  cryptoAddress        String?
+  cryptoType           String?
+  brand                String?
+  last4                String?
+  expMonth             Int?
+  expYear              Int?
+  isDefault            Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Addon {
+  id            String      @id @default(cuid())
+  name          String      @unique
+  description   String
+  price         Float
+  currency      String      @default("USD")
+  stripePriceId String?
+  paypalPlanId  String?
+  isPublic      Boolean     @default(true)
+  active        Boolean     @default(true)
+  userAddons    UserAddon[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model UserAddon {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  addonId   String
+  addon     Addon    @relation(fields: [addonId], references: [id], onDelete: Cascade)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, addonId])
+}
+
+model CustomDomain {
+  id            String   @id @default(cuid())
+  domain        String   @unique
+  verified      Boolean  @default(false)
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String
+  dnsVerified   Boolean  @default(false)
+  sslProvisioned Boolean  @default(false)
+  status        String   @default("pending") // pending, active, error
+  errorMessage  String?  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  type      String   @default("INFO") // INFO, SUCCESS, WARNING, ERROR
+  link      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  key         String   @unique
+  permissions String[] // READ, WRITE, DELETE
+  lastUsed    DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Webhook {
+  id          String   @id @default(cuid())
+  userId      String
+  url         String
+  events      String[] // CLICK, CONVERSION, SUBSCRIPTION
+  secret      String?
+  active      Boolean  @default(true)
+  lastTriggered DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
 model SessionEvent {
   id        String   @id @default(cuid())
   sessionId String   // Client-side generated session ID
