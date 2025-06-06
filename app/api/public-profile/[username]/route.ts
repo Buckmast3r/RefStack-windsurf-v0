@@ -72,9 +72,17 @@ export async function GET(
     const isPro = hasActiveSubscription && user.subscription.plan === 'PRO';
     const isEnterprise = hasActiveSubscription && user.subscription.plan === 'ENTERPRISE';
     
+    // Define type for userAddon
+    type UserAddon = {
+      active: boolean;
+      addon: {
+        name: string;
+      };
+    };
+
     // Check for white-label addon
     const hasWhiteLabel = user.userAddons.some(
-      addon => addon.active && addon.addon.name === 'WHITELABEL'
+      (addon: UserAddon) => addon.active && addon.addon.name === 'WHITELABEL'
     );
 
     // Get custom theme settings if they exist

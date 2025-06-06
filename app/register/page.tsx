@@ -10,32 +10,46 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff, ArrowLeft, Github, Twitter } from "lucide-react"
 
+interface RegisterFormData {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  acceptTerms: boolean;
+}
+
+interface RegisterFormErrors {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  acceptTerms: string;
+}
+
 export default function RegisterPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<RegisterFormData>({
     email: "",
     password: "",
     confirmPassword: "",
     acceptTerms: false,
   })
-  const [errors, setErrors] = useState({
+  const [errors, setErrors] = useState<RegisterFormErrors>({
     email: "",
     password: "",
     confirmPassword: "",
     acceptTerms: "",
   })
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
     // Clear error when user starts typing
     setErrors((prev) => ({ ...prev, [name]: "" }))
   }
 
-  const handleCheckboxChange = (checked) => {
+  const handleCheckboxChange = (checked: boolean) => {
     setFormData((prev) => ({ ...prev, acceptTerms: checked }))
     setErrors((prev) => ({ ...prev, acceptTerms: "" }))
   }
@@ -81,7 +95,7 @@ export default function RegisterPage() {
     return valid
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!validateForm()) {

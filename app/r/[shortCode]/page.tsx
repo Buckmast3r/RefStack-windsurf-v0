@@ -66,7 +66,7 @@ export async function generateMetadata({ params }: PageParams): Promise<Metadata
 
 export default async function ReferralRedirectPage({ params }: PageParams) {
   const { shortCode } = params;
-  const headersList = headers();
+  const headersList = await headers();
   
   try {
     // Find referral link by short code or custom slug

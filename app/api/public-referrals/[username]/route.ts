@@ -60,8 +60,31 @@ export async function GET(
       ],
     });
 
+    // Define type for referral link
+    type ReferralLink = {
+      id: string;
+      name: string;
+      url: string;
+      shortCode: string;
+      customSlug: string | null;
+      description: string | null;
+      customLogo: string | null;
+      customColor: string | null;
+      category: string;
+      displayOrder: number;
+      active: boolean;
+      createdAt: Date;
+      updatedAt: Date;
+      _count: {
+        clicks: number;
+      };
+      clicks: {
+        id: string;
+      }[];
+    };
+
     // Format the referral links
-    const formattedLinks = referralLinks.map(link => ({
+    const formattedLinks = referralLinks.map((link: ReferralLink) => ({
       id: link.id,
       name: link.name,
       url: link.url,

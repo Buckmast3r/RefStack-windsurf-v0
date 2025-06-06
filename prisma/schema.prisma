@@ -7,32 +7,38 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL") // Make sure DATABASE_URL is set in your .env.local file
 }
 
-enum UserRole {
-  USER
-  ADMIN
-}
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  username      String    @unique
+  email         String    @unique
+  emailVerified DateTime? @map("email_verified")
+  passwordHash  String?   @map("password_hash") // For custom auth; if using Supabase Auth, this might be handled differently or not stored here
+  avatarUrl     String?   @map("avatar_url")
+  bannerUrl     String?   @map("banner_url")
+  bio           String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
-enum SubscriptionPlan {
-  FREE
-  PRO
-}
+  accounts      Account[]
+  sessions      Session[]
+  referralLinks ReferralLink[]
+  userPreference UserPreference? 
+  subscriptions Subscription[]
+  addons        Addon[]
 
-enum AddonType {
-  CUSTOM_DOMAIN
-  WHITELABEL
-  API_ACCESS
-  AUTO_EXPIRING_LINKS
+  @@map("users")
 }
 
 model Account {
   id                String  @id @default(cuid())
-  userId            String
+  userId            String  @map("user_id")
   type              String
   provider          String
-  providerAccountId String
+  providerAccountId String  @map("provider_account_id")
   refresh_token     String? @db.Text
   access_token      String? @db.Text
   expires_at        Int?
@@ -44,45 +50,17 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@map("accounts")
 }
 
 model Session {
   id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
 
-model User {
-  id                String               @id @default(cuid())
-  name              String?
-  email             String               @unique
-  emailVerified     DateTime?
-  hashedPassword    String?
-  image             String?
-  avatarUrl         String?
-  accounts          Account[]
-  sessions          Session[]
-  referralLinks     ReferralLink[]
-  subscription      Subscription?
-  userPreference    UserPreference?
-  addons            UserAddon[]
-  notifications     Notification[]
-  customDomains     CustomDomain[]
-  bannerUrl         String?
-  logoUrl           String?
-  bio               String?
-  socialLinks       Json?               @default("{}") // store as json
-  username          String?             @unique
-  phoneNumber       String?
-  address           String?
-  company           String?
-  title             String?
-  primaryColor      String?             @default("#0070f3") // default primary color
-  publicProfile     Boolean             @default(true) // is public profile enabled
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  @@map("sessions")
 }
 
 model VerificationToken {
@@ -91,264 +69,90 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+  @@map("verification_tokens")
 }
 
 model UserPreference {
-  id           String    @id @default(cuid())
-  userId       String    @unique
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  theme        String    @default("system")
-  emailUpdates Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id") // Ensures one-to-one with User
+  theme     String?  // e.g., 'default', 'sunset', 'forest', 'midnight'
+  showPublicProfile Boolean @default(true) @map("show_public_profile")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
 }
 
 model ReferralLink {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  url         String
-  shortCode   String   @unique
-  description String?  @db.Text
-  customLogo  String?
-  customColor String?
-  customSlug  String?  @unique
-  clicks      Click[]
-  conversions Int      @default(0)
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  name            String    // e.g., "Coinbase", "Amazon Audible"
+  url             String    // The actual referral destination URL
+  shortCode       String    @unique @map("short_code") // For /r/[shortCode] redirection
+  customSlug      String?   @unique @map("custom_slug") // Optional vanity slug for public profile
+  description     String?
+  category        String?   // e.g., "Crypto", "Books", "Software"
+  logoUrl         String?   @map("logo_url") // URL to the company logo
+  logoColor       String?   @map("logo_color") // Dominant color for the logo/card
+  status          String    @default("ACTIVE") // ACTIVE, INACTIVE, ARCHIVED
+  displayOrder    Int?      @map("display_order") // For ordering on public stack page
+  
+  clicks          Int       @default(0) // Denormalized count, can be updated by triggers or batch jobs
+  conversions     Int       @default(0) // Denormalized count
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clickEvents     ClickEvent[]
+
+  @@index([userId])
+  @@map("referral_links")
 }
 
-model Click {
-  id             String       @id @default(cuid())
-  referralLinkId String
-  referralLink   ReferralLink @relation(fields: [referralLinkId], references: [id], onDelete: Cascade)
-  userId         String?
-  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
-  ip             String?
-  userAgent      String?
-  country        String?
-  city           String?
-  browser        String?
-  os             String?
-  device         String?
-  referer        String?
-  converted      Boolean      @default(false)
-  conversionData Json?
-  createdAt      DateTime     @default(now())
+model ClickEvent {
+  id              String    @id @default(cuid())
+  referralLinkId  String    @map("referral_link_id")
+  ipAddress       String?   @map("ip_address") // Consider privacy implications and regulations (e.g., GDPR)
+  userAgent       String?   @map("user_agent")
+  timestamp       DateTime  @default(now())
+  country         String?   // GeoIP lookup result
+  city            String?   // GeoIP lookup result
+  
+  referralLink    ReferralLink @relation(fields: [referralLinkId], references: [id], onDelete: Cascade)
+
+  @@index([referralLinkId])
+  @@map("click_events")
 }
 
 model Subscription {
-  id                   String    @id @default(cuid())
-  userId               String    @unique
-  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan                 String    @default("FREE")
-  status               String    @default("ACTIVE") // ACTIVE, CANCELED, PAST_DUE, UNPAID, TRIALING
-  startDate            DateTime  @default(now())
-  endDate              DateTime?
-  trialEndDate         DateTime?
-  cancelAtPeriodEnd    Boolean   @default(false)
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
-  stripePriceId        String?
-  paypalSubscriptionId String?
-  features             Json?     @default("{}")
-  maxLinks             Int       @default(5)
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-}
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  planName  String   @map("plan_name") // e.g., "free", "pro", "enterprise"
+  status    String   // e.g., "active", "cancelled", "past_due"
+  startDate DateTime @map("start_date")
+  endDate   DateTime? @map("end_date")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-model UserProfile {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio            String?  @db.Text
-  website        String?
-  twitterHandle  String?
-  githubHandle   String?
-  linkedinHandle String?
-  telegramHandle String?
-  company        String?
-  location       String?
-  timezone       String?  @default("UTC")
-  avatarUrl      String?
-  bannerUrl      String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-}
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-model SubscriptionPlan {
-  id            String  @id @default(cuid())
-  name          String  @unique
-  description   String
-  price         Float
-  interval      String  @default("month") // month, year
-  currency      String  @default("USD")
-  stripePriceId String?
-  paypalPlanId  String?
-  features      Json?   @default("{}")
-  isPublic      Boolean @default(true)
-  active        Boolean @default(true)
-  maxLinks      Int     @default(5)
-  priority      Int     @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-model Invoice {
-  id               String    @id @default(cuid())
-  userId           String
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  amount           Float
-  currency         String    @default("USD")
-  status           String    @default("PENDING") // PENDING, PAID, FAILED, REFUNDED
-  stripeInvoiceId  String?
-  stripePriceId    String?
-  stripeCustomerId String?
-  paypalInvoiceId  String?
-  paymentMethod    String?
-  paidAt           DateTime?
-  invoiceDate      DateTime  @default(now())
-  dueDate          DateTime
-  items            Json?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-}
-
-model PaymentMethod {
-  id                   String   @id @default(cuid())
-  userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type                 String   // CARD, PAYPAL, CRYPTO
-  stripePaymentMethodId String?
-  paypalPaymentMethodId String?
-  cryptoAddress        String?
-  cryptoType           String?
-  brand                String?
-  last4                String?
-  expMonth             Int?
-  expYear              Int?
-  isDefault            Boolean  @default(false)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  @@map("subscriptions")
 }
 
 model Addon {
-  id            String      @id @default(cuid())
-  name          String      @unique
-  description   String
-  price         Float
-  currency      String      @default("USD")
-  stripePriceId String?
-  paypalPlanId  String?
-  isPublic      Boolean     @default(true)
-  active        Boolean     @default(true)
-  userAddons    UserAddon[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-}
-
-model UserAddon {
   id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  addonId   String
-  addon     Addon    @relation(fields: [addonId], references: [id], onDelete: Cascade)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  userId    String   @map("user_id")
+  name      String   // Name of the addon, e.g., "Advanced Analytics", "Custom Domain"
+  status    String   // e.g., "active", "inactive"
+  purchasedAt DateTime @default(now()) @map("purchased_at")
+  expiresAt DateTime? @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@unique([userId, addonId])
-}
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-model CustomDomain {
-  id            String   @id @default(cuid())
-  domain        String   @unique
-  verified      Boolean  @default(false)
-  user          User     @relation(fields: [userId], references: [id])
-  userId        String
-  dnsVerified   Boolean  @default(false)
-  sslProvisioned Boolean  @default(false)
-  status        String   @default("pending") // pending, active, error
-  errorMessage  String?  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([userId])
-}
-
-model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  message   String
-  read      Boolean  @default(false)
-  type      String   @default("INFO") // INFO, SUCCESS, WARNING, ERROR
-  link      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model ApiKey {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  key         String   @unique
-  permissions String[] // READ, WRITE, DELETE
-  lastUsed    DateTime?
-  expiresAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model Webhook {
-  id          String   @id @default(cuid())
-  userId      String
-  url         String
-  events      String[] // CLICK, CONVERSION, SUBSCRIPTION
-  secret      String?
-  active      Boolean  @default(true)
-  lastTriggered DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String?
-  action    String
-  entity    String
-  entityId  String?
-  metadata  Json?
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
-}
-
-model SessionEvent {
-  id        String   @id @default(cuid())
-  sessionId String   // Client-side generated session ID
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  @@index([sessionId])
-  @@index([userId])
-  @@index([createdAt])
-  ipAddress String?
-  userAgent String?
-  referrer  String?
-  country   String?
-  region    String?
-  city      String?
-  device    String?
-  browser   String?
-  os        String?
-  createdAt DateTime @default(now())
-  expiresAt DateTime @default(dbgenerated("(now() + '30 days'::interval)"))
-
-  @@index([sessionId])
-  @@index([userId])
-  @@index([createdAt])
+  @@map("addons")
 }

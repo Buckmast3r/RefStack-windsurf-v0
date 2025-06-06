@@ -6,7 +6,7 @@ import { verifyCoinbaseWebhook } from '@/lib/coinbase';
 export async function POST(request: Request) {
   try {
     const body = await request.text();
-    const headersList = headers();
+    const headersList = await headers();
     
     // Get the signature from the header
     const signature = headersList.get('x-cc-webhook-signature');

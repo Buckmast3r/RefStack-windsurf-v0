@@ -11,7 +11,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-export default function DeleteConfirmModal({ isOpen, onClose, onConfirm, referralName }) {
+interface DeleteConfirmModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  referralName: string;
+}
+
+export default function DeleteConfirmModal({ isOpen, onClose, onConfirm, referralName }: DeleteConfirmModalProps) {
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent className="bg-blue-950/90 backdrop-blur-md border-blue-800/50 text-white">

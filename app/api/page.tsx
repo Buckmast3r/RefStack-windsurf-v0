@@ -24,7 +24,7 @@ export default function ApiPage() {
     },
   }
 
-  const copyToClipboard = (code, id) => {
+  const copyToClipboard = (code: string, id: string) => {
     navigator.clipboard.writeText(code)
     setCopiedCode(id)
     setTimeout(() => setCopiedCode(""), 2000)
@@ -86,7 +86,9 @@ export default function ApiPage() {
     },
   ]
 
-  const codeExamples = {
+  type CodeLanguage = 'javascript' | 'python' | 'curl';
+  
+  const codeExamples: Record<CodeLanguage, string> = {
     javascript: `// Initialize the RefStack API client
 const RefStack = require('@refstack/api');
 const client = new RefStack('your-api-key');
@@ -140,7 +142,7 @@ curl -X GET https://api.refstack.me/v1/links/link-id/analytics?period=30d \\
   -H "Authorization: Bearer your-api-key"`,
   }
 
-  const [selectedLanguage, setSelectedLanguage] = useState("javascript")
+  const [selectedLanguage, setSelectedLanguage] = useState<CodeLanguage>("javascript")
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-950 via-indigo-950 to-purple-950 text-white">
@@ -277,7 +279,7 @@ curl -X GET https://api.refstack.me/v1/links/link-id/analytics?period=30d \\
           >
             {/* Language Selector */}
             <div className="flex justify-center gap-4 mb-8">
-              {Object.keys(codeExamples).map((lang) => (
+              {(Object.keys(codeExamples) as CodeLanguage[]).map((lang) => (
                 <button
                   key={lang}
                   onClick={() => setSelectedLanguage(lang)}

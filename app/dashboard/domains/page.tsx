@@ -274,7 +274,7 @@ export default function DomainsPage() {
                     <CardTitle className="flex items-center gap-2">
                       {domain.domain}
                       {domain.status === 'active' && (
-                        <Badge variant="success" className="bg-green-500">Active</Badge>
+                        <Badge variant="secondary" className="bg-green-500 text-white hover:bg-green-600">Active</Badge>
                       )}
                       {domain.status === 'pending' && (
                         <Badge variant="outline">Pending</Badge>

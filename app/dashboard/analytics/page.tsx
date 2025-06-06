@@ -30,17 +30,48 @@ export default function AnalyticsPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [timeframe, setTimeframe] = useState("30d")
-  const [stats, setStats] = useState({
+  // Define type interfaces for our data structures
+  interface StatsData {
+    totalClicks: number;
+    totalConversions: number;
+    conversionRate: number;
+    referralLinks: any[];
+  }
+
+  interface TimeSeriesData {
+    date: string;
+    clicks?: number;
+    conversions?: number;
+  }
+
+  interface DeviceData {
+    name: string;
+    value: number;
+  }
+
+  interface GeoData {
+    country: string;
+    clicks: number;
+  }
+
+  interface ReferralData {
+    id: string;
+    name: string;
+    clicks: number;
+    conversions: number;
+  }
+
+  const [stats, setStats] = useState<StatsData>({
     totalClicks: 0,
     totalConversions: 0,
     conversionRate: 0,
     referralLinks: []
   })
-  const [clickData, setClickData] = useState([])
-  const [conversionData, setConversionData] = useState([])
-  const [deviceData, setDeviceData] = useState([])
-  const [geoData, setGeoData] = useState([])
-  const [referralData, setReferralData] = useState([])
+  const [clickData, setClickData] = useState<TimeSeriesData[]>([])
+  const [conversionData, setConversionData] = useState<TimeSeriesData[]>([])
+  const [deviceData, setDeviceData] = useState<DeviceData[]>([])
+  const [geoData, setGeoData] = useState<GeoData[]>([])
+  const [referralData, setReferralData] = useState<ReferralData[]>([])
 
   useEffect(() => {
     if (status === "unauthenticated") {

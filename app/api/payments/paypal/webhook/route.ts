@@ -35,7 +35,7 @@ function verifyPayPalWebhook(
 export async function POST(request: Request) {
   try {
     const body = await request.text();
-    const headersList = headers();
+    const headersList = await headers();
     
     // Extract PayPal webhook headers
     const transmissionId = headersList.get('paypal-transmission-id');

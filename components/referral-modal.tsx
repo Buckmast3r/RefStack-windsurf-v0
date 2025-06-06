@@ -32,8 +32,29 @@ const logoColors = [
   { name: "Gray", value: "bg-gray-500" },
 ]
 
-export default function ReferralModal({ isOpen, onClose, onSave, title, referral = null }) {
-  const [formData, setFormData] = useState({
+interface ReferralData {
+  id?: string;
+  name: string;
+  category: string;
+  url: string;
+  logoColor: string;
+  status: string;
+  includeInPublicStack: boolean;
+  clicks?: number;
+  conversions?: number;
+  dateCreated?: string;
+}
+
+interface ReferralModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (data: ReferralData) => void;
+  title: string;
+  referral: ReferralData | null;
+}
+
+export default function ReferralModal({ isOpen, onClose, onSave, title, referral = null }: ReferralModalProps) {
+  const [formData, setFormData] = useState<ReferralData>({
     name: "",
     category: "Tech",
     url: "https://refstack.me/",
@@ -69,24 +90,24 @@ export default function ReferralModal({ isOpen, onClose, onSave, title, referral
     }
   }, [referral, isOpen])
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSelectChange = (name, value) => {
+  const handleSelectChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleStatusChange = (checked) => {
+  const handleStatusChange = (checked: boolean) => {
     setFormData((prev) => ({ ...prev, status: checked ? "active" : "inactive" }))
   }
 
-  const handlePublicStackChange = (checked) => {
+  const handlePublicStackChange = (checked: boolean) => {
     setFormData((prev) => ({ ...prev, includeInPublicStack: checked }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     onSave(formData)
   }

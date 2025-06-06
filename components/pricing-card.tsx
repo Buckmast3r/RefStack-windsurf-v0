@@ -9,6 +9,7 @@ interface PricingCardProps {
   buttonText: string
   buttonVariant: "default" | "outline"
   popular?: boolean
+  buttonOverride?: React.ReactNode
 }
 
 export default function PricingCard({
@@ -19,6 +20,7 @@ export default function PricingCard({
   buttonText,
   buttonVariant,
   popular = false,
+  buttonOverride,
 }: PricingCardProps) {
   return (
     <div className="relative group">
@@ -54,16 +56,17 @@ export default function PricingCard({
           </div>
           <p className="text-blue-200/80 mb-6">{description}</p>
 
-          <Button
-            variant={buttonVariant}
-            className={`w-full mb-8 text-lg py-6 ${
-              buttonVariant === "default"
-                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-[0_0_15px_rgba(59,130,246,0.4)] border border-blue-500/50"
-                : "text-white border-blue-500/50 hover:bg-blue-900/30"
-            }`}
-          >
-            {buttonText}
-          </Button>
+          {buttonOverride || (
+            <Button
+              variant={buttonVariant}
+              className={`w-full ${buttonVariant === "default"
+                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-[0_0_10px_rgba(59,130,246,0.3)] border border-blue-500/50"
+                  : "text-white border-blue-500/50 hover:bg-blue-900/30"
+              }`}
+            >
+              {buttonText}
+            </Button>
+          )}
 
           <div className="space-y-3">
             {features.map((feature, index) => (

@@ -43,49 +43,6 @@ export default function UserPublicStackPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTheme, setSelectedTheme] = useState<'default' | 'sunset' | 'forest' | 'midnight'>('default');
-  
-  // Theme configurations
-  const themes = {
-    default: {
-      name: "Ocean Blue",
-      gradient: "from-blue-950 via-indigo-950 to-purple-950",
-      cardBg: "bg-blue-950/40",
-      cardBorder: "border-blue-800/50",
-      accent: "bg-blue-600",
-      textPrimary: "text-white",
-      textSecondary: "text-blue-200/80",
-    },
-    sunset: {
-      name: "Sunset Glow",
-      gradient: "from-orange-950 via-red-950 to-pink-950",
-      cardBg: "bg-orange-950/40",
-      cardBorder: "border-orange-800/50",
-      accent: "bg-orange-600",
-      textPrimary: "text-white",
-      textSecondary: "text-orange-200/80",
-    },
-    forest: {
-      name: "Forest Green",
-      gradient: "from-green-950 via-emerald-950 to-teal-950",
-      cardBg: "bg-green-950/40",
-      cardBorder: "border-green-800/50",
-      accent: "bg-green-600",
-      textPrimary: "text-white",
-      textSecondary: "text-green-200/80",
-    },
-    midnight: {
-      name: "Midnight Purple",
-      gradient: "from-purple-950 via-violet-950 to-indigo-950",
-      cardBg: "bg-purple-950/40",
-      cardBorder: "border-purple-800/50",
-      accent: "bg-purple-600",
-      textPrimary: "text-white",
-      textSecondary: "text-purple-200/80",
-    },
-  };
-
-  const currentTheme = themes[selectedTheme];
 
   // Fetch user profile and referral links
   useEffect(() => {
@@ -100,19 +57,15 @@ export default function UserPublicStackPage() {
           if (response.status === 404) {
             throw new Error('User profile not found');
           }
-          throw new Error('Failed to load user profile');
+          throw new Error('Failed to fetch user profile');
         }
         
-        const data = await response.json();
-        setUser(data);
+        const userData = await response.json();
+        setUser(userData);
         
-        // Set theme based on user preferences if available
-        if (data.userPreference?.theme) {
-          setSelectedTheme(data.userPreference.theme as 'default' | 'sunset' | 'forest' | 'midnight');
-        }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error fetching user profile:', err);
-        setError(err.message || 'Failed to load user profile');
+        setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setIsLoading(false);
       }
@@ -123,231 +76,147 @@ export default function UserPublicStackPage() {
     }
   }, [username]);
 
-  // Handle share button click
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${user?.name || user?.username}'s Referral Stack`,
-          text: `Check out ${user?.name || user?.username}'s referral stack on RefStack!`,
-          url: window.location.href,
-        });
-      } catch (error) {
-        console.error('Error sharing:', error);
-      }
-    } else {
-      // Fallback for browsers that don't support the Web Share API
-      navigator.clipboard.writeText(window.location.href);
-      toast.success('Link copied to clipboard!');
-    }
-  };
-
-  // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-950 to-indigo-950 text-white py-12 px-4">
-        <div className="max-w-5xl mx-auto text-center">
-          <div className="animate-pulse">
-            <div className="h-24 w-24 bg-blue-800/30 rounded-full mx-auto mb-4"></div>
-            <div className="h-8 w-48 bg-blue-800/30 rounded mx-auto mb-12"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-32 bg-blue-800/30 rounded-lg"></div>
-              ))}
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-950 to-indigo-950 text-white py-12 px-4">
-        <div className="max-w-xl mx-auto text-center">
-          <h1 className="text-3xl font-bold mb-4">Profile Not Found</h1>
-          <p className="text-xl mb-8">{error}</p>
-          <Button
-            variant="outline"
-            className="border-white/20 hover:bg-white/10"
-            onClick={() => window.location.href = '/'}
-          >
-            Return to Home
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 max-w-md w-full text-center">
+          <h2 className="text-xl font-semibold mb-2">Error</h2>
+          <p className="text-red-200 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()} variant="outline">
+            Try Again
           </Button>
         </div>
       </div>
     );
   }
 
-  // Calculate stats from referrals
-  const publicReferrals = user?.referralLinks || [];
-  const totalReferralCards = publicReferrals.length;
-  const totalClicks = publicReferrals.reduce((sum, ref) => sum + ref.clicks, 0);
-  const totalConversions = publicReferrals.reduce((sum, ref) => sum + ref.conversions, 0);
-  const avgClicksPerCard = totalReferralCards > 0 ? Math.round(totalClicks / totalReferralCards) : 0;
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>No user data found</p>
+      </div>
+    );
+  }
 
-  // Current URL for SEO tags
-  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+  // Calculate total clicks and conversions
+  const totalClicks = user.referralLinks.reduce((sum, link) => sum + (link.clicks || 0), 0);
+  const totalConversions = user.referralLinks.reduce((sum, link) => sum + (link.conversions || 0), 0);
+  const conversionRate = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
 
   return (
-    <>
-      {/* SEO Meta Tags - client-side only */}
-      {user && (
-        <>
-          <SocialMetaTags
-            title={`${user.name || '@' + user.username} | RefStack`}
-            description={user.bio || `Check out ${user.username}'s referral links and recommendations on RefStack`}
-            image={user.avatarUrl}
-            url={currentUrl}
-            type="profile"
-          />
-          <ProfileStructuredData
-            name={user.name || user.username}
-            username={user.username}
-            description={user.bio}
-            image={user.avatarUrl}
-            url={currentUrl}
-          />
-        </>
-      )}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+      {/* Social Meta Tags */}
+      <SocialMetaTags 
+        username={user.username}
+        name={user.name}
+        bio={user.bio}
+        avatarUrl={user.avatarUrl}
+      />
+      
+      {/* Structured Data */}
+      <ProfileStructuredData 
+        username={user.username}
+        name={user.name}
+        bio={user.bio}
+        avatarUrl={user.avatarUrl}
+        links={user.referralLinks}
+      />
 
-      <div className={`min-h-screen bg-gradient-to-b ${currentTheme.gradient} text-white`}>
-        <div className="max-w-5xl mx-auto py-12 px-4">
-          {/* Share Button */}
-          <div className="absolute top-4 right-4">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="bg-white/10 hover:bg-white/20 rounded-full"
-              onClick={handleShare}
-            >
-              <Share2 className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Profile Section */}
-          <div className="text-center mb-12">
-            <div className="mb-6">
-              {user?.avatarUrl ? (
-                <img 
-                  src={user.avatarUrl} 
-                  alt={user.name || user.username} 
-                  className="h-24 w-24 rounded-full mx-auto shadow-xl border-2 border-white/20"
+      {/* Header */}
+      <header className="relative">
+        {user.bannerUrl && (
+          <div 
+            className="h-48 w-full bg-cover bg-center"
+            style={{ backgroundImage: `url(${user.bannerUrl})` }}
+          />
+        )}
+        
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+            {user.avatarUrl && (
+              <div className="relative -mt-16">
+                <img
+                  src={user.avatarUrl}
+                  alt={`${user.name || user.username}'s avatar`}
+                  className="h-32 w-32 rounded-full border-4 border-gray-800 bg-gray-800"
                 />
-              ) : (
-                <div className="h-24 w-24 bg-blue-800 rounded-full mx-auto flex items-center justify-center">
-                  <span className="text-2xl font-bold">{user?.username.charAt(0).toUpperCase()}</span>
-                </div>
-              )}
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">
-              {user?.name || `@${user?.username}`}
-            </h1>
-            {user?.username && user?.name && (
-              <p className="text-xl text-blue-200/80 mb-4">@{user.username}</p>
+              </div>
             )}
-            {user?.bio && (
-              <p className="max-w-2xl mx-auto text-lg mb-8">{user.bio}</p>
-            )}
-          </div>
-
-          {/* Main Content Container */}
-          <div className={`bg-black/20 backdrop-blur-sm rounded-3xl overflow-hidden border border-white/10 shadow-2xl mb-12`}>
-            {/* Stats Section */}
-            <div className={`${currentTheme.cardBg} border-b border-white/10 py-6 px-8`}>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl md:text-3xl font-bold mb-1">{totalClicks}</div>
-                  <div className={`text-sm ${currentTheme.textSecondary} flex items-center justify-center gap-1`}>
-                    <ExternalLink className="h-4 w-4" />
-                    Clicks
-                  </div>
+            
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold">{user.name || user.username}</h1>
+              {user.bio && <p className="text-gray-300 mt-2">{user.bio}</p>}
+              
+              <div className="flex items-center gap-4 mt-4 text-sm text-gray-400">
+                <div className="flex items-center gap-1">
+                  <Users className="h-4 w-4" />
+                  <span>{user.referralLinks.length} links</span>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl md:text-3xl font-bold mb-1">{totalConversions}</div>
-                  <div className={`text-sm ${currentTheme.textSecondary} flex items-center justify-center gap-1`}>
-                    <TrendingUp className="h-4 w-4" />
-                    Conversions
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl md:text-3xl font-bold mb-1">{totalReferralCards}</div>
-                  <div className={`text-sm ${currentTheme.textSecondary} flex items-center justify-center gap-1`}>
-                    <Users className="h-4 w-4" />
-                    Active Links
-                  </div>
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="h-4 w-4" />
+                  <span>{totalClicks} clicks</span>
                 </div>
               </div>
             </div>
-
-            {/* Referral Links Section */}
-            <div className="p-6 md:p-8">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Referral Stack</h2>
-                <div
-                  className={`${currentTheme.cardBg} border ${currentTheme.cardBorder} rounded-full px-3 py-1 text-sm`}
-                >
-                  {publicReferrals.length} active links
-                </div>
-              </div>
-
-              {/* Referral Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {publicReferrals.map((referral, index) => (
-                  <div key={referral.id} className="relative">
-                    {/* Display order indicator */}
-                    <div
-                      className={`absolute -top-2 -left-2 ${currentTheme.accent} text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shadow-lg z-10`}
-                    >
-                      {index + 1}
-                    </div>
-                    <ReferralCard
-                      category={referral.category}
-                      company={referral.name}
-                      logo={`/${referral.name.toLowerCase()}-logo.svg`}
-                      logoColor={referral.logoColor}
-                      hasExternalLink={referral.status === "active"}
-                    />
-                  </div>
-                ))}
-                {publicReferrals.length === 0 && (
-                  <div className="col-span-2 text-center py-12">
-                    <p className={`text-xl ${currentTheme.textSecondary}`}>No referrals in public stack yet</p>
-                    <p className={`${currentTheme.textSecondary} mt-2 opacity-60`}>
-                      This user hasn't added any referrals to their public stack
-                    </p>
-                  </div>
-                )}
-              </div>
+            
+            <div className="flex gap-2">
+              <Button variant="outline" className="gap-2">
+                <Share2 className="h-4 w-4" />
+                Share
+              </Button>
             </div>
-
-            {/* Footer Section */}
-            <div className={`p-6 md:p-8 border-t border-white/10 text-center ${currentTheme.textSecondary}`}>
-              <p className="mb-4">
-                💡 <strong>Pro Tip:</strong> Using these referral links helps support {user?.name || user?.username} and doesn't cost
-                you anything extra!
-              </p>
-              <div className="flex justify-center items-center gap-2 text-sm opacity-75">
-                <span>Powered by</span>
-                <a href="/" className="font-bold hover:text-white transition-colors">
-                  RefStack.me
-                </a>
-              </div>
-            </div>
-          </div>
-
-          {/* Call to Action */}
-          <div className="text-center">
-            <Button
-              className={`${currentTheme.accent} hover:opacity-90 text-white text-xl py-6 px-12 rounded-full shadow-[0_0_20px_rgba(59,130,246,0.5)] border border-blue-500/50 transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.7)]`}
-              onClick={() => window.open("/register", "_blank")}
-            >
-              Build Your Own Referral Stack
-            </Button>
           </div>
         </div>
-      </div>
-    </>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+            <p className="text-gray-400 text-sm">Total Links</p>
+            <p className="text-3xl font-bold">{user.referralLinks.length}</p>
+          </div>
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+            <p className="text-gray-400 text-sm">Total Clicks</p>
+            <p className="text-3xl font-bold">{totalClicks}</p>
+          </div>
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+            <p className="text-gray-400 text-sm">Conversion Rate</p>
+            <p className="text-3xl font-bold">{conversionRate.toFixed(1)}%</p>
+          </div>
+        </div>
+
+        {/* Referral Links */}
+        <div className="grid grid-cols-1 gap-4">
+          {user.referralLinks
+            .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+            .map((link) => (
+              <ReferralCard key={link.id} link={link} username={user.username} />
+            ))}
+            
+          {user.referralLinks.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-400">No referral links found</p>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-800 py-8 mt-12">
+        <div className="container mx-auto px-4 text-center text-gray-400 text-sm">
+          <p>Powered by RefStack</p>
+        </div>
+      </footer>
+    </div>
   );
 }
